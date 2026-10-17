@@ -1,0 +1,29 @@
+# 个人账号配置与运行状态（含 DPAPI 密文，绝不入库）
+config.json
+state.json
+
+# 运行日志
+logs/
+*.log
+
+# 自测生成的配置（DPAPI 密文与本机绑定，换个机器就解不开）
+test/config.test.json
+test/config.bad.json
+test/_tmp_aes/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# 打包产物
+*.zip
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
