@@ -367,3 +367,112 @@ def summarize(page: PortalPage) -> dict:
         "submit_method": (form.method if form else "").upper(),
         "script_candidates": page.script_candidates(),
     }
+
+
+# ------------------------------------------------------------------ 门户证据
+#
+# 为什么需要这一节：``checker.check()`` 把**任何** 200 + HTML 的响应都当作
+# "内容劫持"（见 checker.py 的 _looks_like_html），于是普通网站、运营商提示页、
+# 代理错误页也会产出一个"门户地址"，还会被写进配置（page_auth._persist_portal）。
+# 状态码和 content-type 只能说明"这不是我们要的内容"，**不能证明它是校园网门户**。
+# 这里要求正向证据（登录表单 / 门户特征词 / Dr.COM 标记 / 网关参数），
+# 证据不足时上层必须报 UNKNOWN，而不是"已发现认证门户"。
+
+# 标题里出现这些词，页面"像"认证页
+_PORTAL_TITLE_HINTS = (
+    "登录", "登陆", "认证", "上网", "校园网", "注销", "eportal", "portal",
+    "drcom", "哆点", "城市热点", "sign in", "login", "hotspot",
+)
+# 正文（可见文字）里出现这些词才更可信：全是门户/网关专用词，普通网站不会同时出现
+_PORTAL_TEXT_HINTS = (
+    "wlanuserip", "wlanacname", "nasip", "wlanac", "上网时长", "校园网",
+    "注销", "eportal", "drcom", "哆点", "认证",
+)
+# Dr.COM / ePortal 跳转必备的网关参数（地址里或页面里出现就很有力）
+_PORTAL_PARAM_RE = re.compile(
+    r"(wlanuserip|wlanacname|wlanacip|nasip|wlan_user_mac|wlanac|wlan_ac_ip)\s*[=:]", re.I
+)
+# 证据分阈值：40 = "有密码框的登录表单"或"Dr.COM 标记"单独就够
+_PORTAL_SCORE_THRESHOLD = 40
+
+
+@dataclass
+class PortalEvidence:
+    """"这个页面像不像认证门户"的证据汇总。**是证据，不是猜测。**"""
+
+    is_portal: bool = False
+    score: int = 0
+    reasons: list = field(default_factory=list)
+    has_login_form: bool = False
+    has_password_field: bool = False
+    title: str = ""
+
+    def summary(self) -> str:
+        return "；".join(self.reasons) if self.reasons else "没有发现门户特征"
+
+
+def portal_page_evidence(page: PortalPage | None, *, is_drcom: bool = False) -> PortalEvidence:
+    """从页面本身找"这是认证门户"的正向证据。
+
+    ``is_drcom`` 由调用方传入（``drcom.looks_like_drcom()`` 的结果）。**刻意不在
+    这里 import drcom**：``drcom`` 依赖 ``portal``，反向 import 会形成循环。
+    """
+    ev = PortalEvidence()
+    if page is None:
+        return ev
+    ev.title = (page.title or "").strip()
+    html = page.html or ""
+
+    # 1) 厂商标记（最强）：既有的 Dr.COM / 哆点 ePortal 识别结果，或页面自带标记
+    try:
+        drcom_state = page.drcom_page_state()
+    except Exception:  # noqa: BLE001
+        drcom_state = ""
+    if is_drcom or drcom_state:
+        ev.score += 50
+        ev.reasons.append(
+            f"带 Dr.COM / 哆点门户标记（{drcom_state}）" if drcom_state else "被识别为 Dr.COM / 哆点门户"
+        )
+
+    # 2) 登录表单（有密码框最强）
+    form = None
+    try:
+        form = page.pick_login_form()
+    except Exception:  # noqa: BLE001
+        form = None
+    if form is not None:
+        ev.has_login_form = True
+        password = None
+        try:
+            _user, password = page.classify(form)
+        except Exception:  # noqa: BLE001
+            password = None
+        if password is not None:
+            ev.has_password_field = True
+            ev.score += 40
+            ev.reasons.append("有带密码框的登录表单")
+        else:
+            ev.score += 15
+            ev.reasons.append("有表单，但没找到密码框")
+
+    # 3) 标题 / 可见文字特征词
+    if ev.title and any(hint in ev.title.lower() for hint in _PORTAL_TITLE_HINTS):
+        ev.score += 20
+        ev.reasons.append(f"标题像认证页（{ev.title[:40]}）")
+    try:
+        visible = page.visible_text().lower()
+    except Exception:  # noqa: BLE001
+        visible = ""
+    if visible and any(hint in visible for hint in _PORTAL_TEXT_HINTS):
+        ev.score += 10
+        ev.reasons.append("页面文字里出现认证 / 门户专用词")
+
+    # 4) 网关参数：Dr.COM / ePortal 跳转必备
+    if _PORTAL_PARAM_RE.search(html) or _PORTAL_PARAM_RE.search(page.url or ""):
+        ev.score += 25
+        ev.reasons.append("带校园网网关参数（wlanuserip / wlanacname / nasip）")
+
+    ev.is_portal = ev.score >= _PORTAL_SCORE_THRESHOLD
+    if not ev.is_portal:
+        ev.reasons.append(f"门户特征分 {ev.score} 低于阈值 {_PORTAL_SCORE_THRESHOLD}")
+    return ev

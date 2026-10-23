@@ -29,7 +29,7 @@ from campusnet.portal import PortalPage  # noqa: E402
 
 MANUAL_HINT = """
 ============================================================
-如果自动登录失败：请用浏览器打开 http://111.17.200.130/
+如果自动登录失败：请用浏览器打开 http://192.0.2.10/
 手动输入账号密码登录即可恢复上网（你的密码你自己知道）。
 ============================================================
 """
@@ -93,7 +93,7 @@ def main() -> int:
     time.sleep(3)
     client2 = daemon.build_client(cfg)
     after = check(client2, cfg)
-    print(f"注销后联网: {'仍在线（注销可能没生效）' if after.online else '已离线 ✅'} "
+    print(f"注销后联网: {'仍在线（注销可能没生效）' if after.online else '已离线'} "
           f"（原因={after.reason}，详情={after.detail}）")
     if after.portal_url:
         print(f"探测到认证跳转: {after.portal_url[:120]}")
@@ -114,7 +114,7 @@ def main() -> int:
     banner("4) 最终确认")
     client3 = daemon.build_client(cfg)
     final = check(client3, cfg)
-    print(f"最终联网: {'✅ 已恢复，自动登录成功' if final.online else '❌ 仍不通'}"
+    print(f"最终联网: {'[OK] 已恢复，自动登录成功' if final.online else '❌ 仍不通'}"
           f"（原因={final.reason}，详情={final.detail}）")
 
     print("\n--- 日志末尾 ---")

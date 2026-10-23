@@ -8,11 +8,13 @@
 用法：
     python tools\\test_aes.py            # 只跑标准向量
     python tools\\test_aes.py --node     # 额外用 node + 门户 CryptoJS 交叉验证
+                                         # （可用环境变量 CAMPUSNET_NODE 指定 node.exe 路径）
 """
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -72,7 +74,7 @@ check("往返一致", aes.pkcs7_unpad(aes.pkcs7_pad("哆点".encode("utf-8"))), 
 # ------------------------------------------------ 3. 自往返
 
 print("\n3) 本实现加解密自往返")
-for text in ["", "a", "hello world", "account@cmcc", "哆点 ePortal 认证"]:
+for text in ["", "a", "hello world", "13800000000@cmcc", "哆点 ePortal 认证"]:
     token = aes.encrypt_b64(text)
     check(f"往返 {text[:16]!r}", aes.decrypt_b64(token), text)
 
@@ -81,9 +83,8 @@ for text in ["", "a", "hello world", "account@cmcc", "哆点 ePortal 认证"]:
 if "--node" in sys.argv:
     print("\n4) 与门户自带 CryptoJS 逐字节比对")
     node = None
-    for candidate in (
-        Path("node.exe"),
-    ):
+    candidates = [Path(name) for name in (os.environ.get("CAMPUSNET_NODE"), "node.exe") if name]
+    for candidate in candidates:
         if candidate.exists():
             node = candidate
             break
@@ -104,9 +105,9 @@ if "--node" in sys.argv:
             "a",
             "1234567890abcdef",
             "哆点 ePortal 认证测试",
-            '{"login_method":1,"user_account":",0,account@cmcc","user_password":"your_password",'
-            '"wlan_user_ip":"10.0.0.1","wlan_user_ipv6":"","wlan_user_mac":"000000000000",'
-            '"wlan_ac_ip":"117.132.17.39","wlan_ac_name":"0013.0533.531.00","jsVersion":"4.2.1"}',
+            '{"login_method":1,"user_account":",0,13800000000@cmcc","user_password":"Test1234",'
+            '"wlan_user_ip":"198.51.100.20","wlan_user_ipv6":"","wlan_user_mac":"0A1B2C3D4E5F",'
+            '"wlan_ac_ip":"192.0.2.20","wlan_ac_name":"AC-NAME-EXAMPLE","jsVersion":"4.2.1"}',
         ]
         tmp_dir = ROOT / "test" / "_tmp_aes"
         tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -136,4 +137,4 @@ print()
 if FAILED:
     print(f"结果：{len(FAILED)} 项失败 -> {FAILED}")
     raise SystemExit(1)
-print("结果：全部通过 ✅")
+print("结果：全部通过")

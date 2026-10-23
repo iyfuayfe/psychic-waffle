@@ -67,7 +67,7 @@ def login_once(client: HttpClient, api: str, ip: str, tag: str) -> None:
 
 def main() -> int:
     cfg = Config.load()
-    host = cfg.drcom.host or "111.17.200.130"
+    host = cfg.drcom.host or "192.0.2.10"
     port = cfg.drcom.port or 801
     api = f"http://{host}:{port}/eportal/portal/"
     ip = cfg.drcom.wlan_user_ip or (cfg.portal_url.split("wlanuserip=")[1].split("&")[0]

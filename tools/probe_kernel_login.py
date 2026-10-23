@@ -44,7 +44,7 @@ def unwrap(text: str):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--portal", default="http://111.17.200.130")
+    ap.add_argument("--portal", default="http://192.0.2.10")
     ap.add_argument("--config", default="config.json")
     ap.add_argument("--account", default="")
     ap.add_argument("--password", default="")

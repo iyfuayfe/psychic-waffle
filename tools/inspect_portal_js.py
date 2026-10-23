@@ -27,7 +27,7 @@ def save(name: str, text: str) -> Path:
 def main() -> int:
     client = HttpClient(timeout=15, insecure_tls=True, use_system_proxy=False)
 
-    home = client.get("http://111.17.200.130/", follow_redirects=True)
+    home = client.get("http://192.0.2.10/", follow_redirects=True)
     print(f"首页 HTTP {home.status} -> {home.url} ({len(home.body)}B)")
     save("home.html", home.text)
 

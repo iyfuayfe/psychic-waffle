@@ -280,7 +280,7 @@ class DrcomAdapter:
         self._forced_login_method = ctx.login_method
 
         # 1) 先看门户页内嵌 JS —— 这是服务端**为本机现场生成**的，最权威。
-        #    实测 a79.htm 里有 v46ip='<本机IP>'（v1 漏了这个，只认 v4ip，
+        #    实测 a79.htm 里有 v46ip='198.51.100.20'（v1 漏了这个，只认 v4ip，
         #    结果用了跳转 URL 里的过期 IP，服务端自然回"当前页面已超时"）。
         page_ip = ""
         page_mac = ""

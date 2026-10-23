@@ -30,12 +30,13 @@ from campusnet.daemon import build_client, make_verifier  # noqa: E402
 from campusnet.drcom import looks_like_drcom  # noqa: E402
 from campusnet.http import HttpClient  # noqa: E402
 from campusnet.logs import setup_logging  # noqa: E402
+from campusnet.paths import log_dir as LOG_DIR  # noqa: E402
 from campusnet.portal import PortalPage  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gui_common import install_task, whitelist_status  # noqa: E402
+from gui_common import install_task  # noqa: E402
 
-DEFAULT_PORTAL = "http://111.17.200.130/"
+DEFAULT_PORTAL = "http://192.0.2.10/"
 TASK_NAME = "CampusNetAutoLogin"
 
 
@@ -241,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     cfg.username = username
     cfg.password_enc = enc
     cfg.drcom.enabled = True
-    if drcom_info["is_drcom"] or "111.17.200.130" in portal_url:
+    if drcom_info["is_drcom"] or "192.0.2.10" in portal_url:
         cfg.drcom.host = cfg.drcom.host or _host_of(portal_url)
         cfg.drcom.port = int(drcom_info["port"] or 801)
         cfg.drcom.account_suffix = suffix
@@ -276,43 +277,32 @@ def main(argv: list[str] | None = None) -> int:
         out()
         out("[5/5] 已跳过验证")
 
-    # ---- 计划任务 ----
+    # ---- 开机自启动（V3.0：单一机制，用户级 HKCU Run，不需要管理员）----
     out()
     if args.no_task:
-        out("[任务] 已跳过开机自启注册。手动启动方式：")
+        out("[自启动] 已跳过注册。手动启动方式：")
         out(f'      pythonw.exe "{PROJECT_ROOT / "campus_login.py"}"')
     else:
         do_install = True
         if interactive:
-            do_install = ask_yes("[任务] 现在注册开机自动后台运行吗？", True)
+            do_install = ask_yes("[自启动] 现在设置为开机自动后台运行吗？", True)
         if do_install:
             ok, info = install_task(Path(__file__).resolve().parent)
-            out("[任务] 注册" + ("成功" if ok else "失败"))
+            out("[自启动] 设置" + ("成功" if ok else "失败"))
             if info:
-                out("      " + info.replace("\n", "\n      "))
-            if not ok:
-                out("      可稍后手动执行：powershell -ExecutionPolicy Bypass -File tools\\install_task.ps1")
+                out("      " + str(info).replace("\n", "\n      "))
         else:
-            out("[任务] 已跳过")
+            out("[自启动] 已跳过")
 
-    # ---- 杀毒白名单提醒 ----
-    try:
-        wl = whitelist_status()
-        need_wl = bool(
-            (wl.get("defender_available") and (wl.get("missing_processes") or wl.get("missing_paths")))
-            or (not wl.get("defender_available") and wl.get("third_party_av"))
-        )
-    except Exception:  # noqa: BLE001
-        need_wl = True
-    if need_wl:
-        out()
-        out("[提示] 建议把程序加入杀毒软件白名单，防止被杀毒软件误拦导致偶尔不生效：")
-        out("       双击「4-加入白名单.bat」（自动处理 Windows Defender；")
-        out("       360 / 火绒 / 电脑管家等第三方杀毒会打印手动添加步骤）")
+    # ---- 安全说明（V3.0 不再自动添加任何杀毒软件排除项）----
+    out()
+    out("[安全] 本程序不需要关闭或调整任何安全软件。")
+    out("       如果以后怀疑被拦截，请先打开本程序点「设置 → 安全体检」看现状，")
+    out("       或执行 CampusNetCLI.exe doctor 导出脱敏诊断包，再判断下一步。")
 
     out()
     out("=" * 64)
-    out("完成。日志在 logs\\campus_login.log，全程无窗口、无弹窗。")
+    out(f"完成。日志在 {LOG_DIR}\\campus_login.log，后台运行时无窗口、无弹窗。")
     out("手动排障：python campus_login.py --once --verbose")
     out("=" * 64)
     return 0

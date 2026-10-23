@@ -5,7 +5,7 @@
 
 用法：
     python detect_portal.py                          # 自动探测
-    python detect_portal.py --url http://111.17.200.130/
+    python detect_portal.py --url http://192.0.2.10/
     python detect_portal.py --json                   # 输出机器可读结果
 """
 
@@ -24,6 +24,7 @@ from campusnet.checker import check  # noqa: E402
 from campusnet.config import DEFAULT_CONFIG_PATH, LOG_DIR, Config  # noqa: E402
 from campusnet.http import HttpClient, guess_encoding  # noqa: E402
 from campusnet.portal import PortalPage, summarize  # noqa: E402
+from campusnet.security import redact_portal_html  # noqa: E402
 
 
 def _p(text: str = "") -> None:
@@ -110,8 +111,9 @@ def analyze_portal(client: HttpClient, url: str) -> dict:
     try:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         dump = LOG_DIR / "portal_dump.html"
-        dump.write_text(f"<!-- {resp.url} -->\n{page.html}", encoding="utf-8", errors="replace")
-        _p(f"\n  原始页面已保存：{dump}")
+        # 诊断转储也要脱敏：账号、密码、令牌、内网地址、MAC 全部打码
+        dump.write_text(redact_portal_html(page.html, resp.url), encoding="utf-8", errors="replace")
+        _p(f"\n  已脱敏的页面副本已保存：{dump}")
     except Exception as exc:  # noqa: BLE001
         _p(f"\n  （页面保存失败：{exc}）")
 
@@ -238,7 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     if not portal_url and args.url == "":
         _p()
         _p("  没能自动发现认证页地址。请用 --url 手工指定，例如：")
-        _p("      python detect_portal.py --url http://111.17.200.130/")
+        _p("      python detect_portal.py --url http://192.0.2.10/")
     if portal_url:
         report["portal"] = analyze_portal(client, portal_url)
         page_obj = (report["portal"] or {}).pop("_page_obj", None)

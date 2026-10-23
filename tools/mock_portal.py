@@ -2,7 +2,7 @@
 
 模拟 Dr.COM / 哆点 ePortal 的行为：
   - 未认证时 /connecttest.txt 返回 302 到门户，并带上 wlanuserip/wlanacname 参数（真实门户就是这么干的）
-  - 门户页是 GBK 编码、无 <form>、参数内嵌在 JS 里（和 111.17.200.130 的结构一致）
+  - 门户页是 GBK 编码、无 <form>、参数内嵌在 JS 里（和 192.0.2.10 的结构一致）
   - /eportal/portal/login 用 JSONP 信封返回，支持 user_account/user_password 与 DDDDD/upass 两套参数
 
 用法：

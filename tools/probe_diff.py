@@ -24,7 +24,7 @@ from campusnet.drcom import DrcomAdapter, parse_jsonp  # noqa: E402
 from campusnet.logs import setup_logging  # noqa: E402
 from campusnet.portal import PortalPage  # noqa: E402
 
-HOST = "111.17.200.130"
+HOST = "192.0.2.10"
 
 
 def fire(adapter, ctx, password, label, client):
@@ -117,7 +117,7 @@ def main() -> int:
     fire(adapter2, ctx2, real, "A2 真密码(重试)", client2)
     time.sleep(3)
     fin = ck(client2, cfg)
-    print(f"最终联网：{'✅ 成功' if fin.online else '❌ 仍不通'}（{fin.reason}）")
+    print(f"最终联网：{'[OK] 成功' if fin.online else '❌ 仍不通'}（{fin.reason}）")
     return 0
 
 

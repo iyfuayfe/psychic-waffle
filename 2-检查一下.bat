@@ -1,39 +1,47 @@
 @echo off
 rem ---------------------------------------------------------------
-rem  Campus Net Auto Login - Status
-rem  NOTE: intentionally ASCII-only. cmd.exe parses .bat files using
-rem  the console code page, so non-ASCII text here can corrupt the
-rem  batch file on some systems. All Chinese UI text lives in the
-rem  Python GUI, which is Unicode-safe.
+rem  CampusNet - network status / diagnosis (console output)
+rem  ASCII-only on purpose, see 0-*.bat for why.
 rem ---------------------------------------------------------------
-title Campus Net Auto Login - Status
+title CampusNet Status
 cd /d "%~dp0"
 
-set "PYW="
-where pythonw.exe >nul 2>nul
-if not errorlevel 1 set "PYW=pythonw.exe"
-if defined PYW goto run
-where pyw.exe >nul 2>nul
-if not errorlevel 1 set "PYW=pyw.exe"
-if defined PYW goto run
-goto nopython
+if exist "CampusNetCLI.exe" goto runexe
+if exist "dist\CampusNet\CampusNetCLI.exe" goto rundist
+goto runsource
+
+:runexe
+set "CLI=CampusNetCLI.exe"
+goto run
+
+:rundist
+set "CLI=dist\CampusNet\CampusNetCLI.exe"
+goto run
+
+:runsource
+where python.exe >nul 2>nul
+if errorlevel 1 goto nopython
+set "CLI=python entry.py --role cli"
+goto run
 
 :run
-start "" "%PYW%" "tools\gui_status.pyw"
+echo.
+echo   Checking network status ...
+echo   ------------------------------------------------------------
+%CLI% status
+echo   ------------------------------------------------------------
+echo.
+echo   Info: "redirect" / "hijack" means the campus portal is asking
+echo   for authentication. "dns-error" / "timeout" / "unreachable"
+echo   means the network layer is the problem, not your password.
+echo.
+pause
 exit /b 0
 
 :nopython
 echo.
-echo   [ERROR] Python was not found on this computer.
+echo   [ERROR] CampusNetCLI.exe was not found, and Python is not installed.
+echo   Please extract the whole release folder and try again.
 echo.
-echo   Please install Python 3.8 or newer first:
-echo       https://www.python.org/downloads/
-echo.
-echo   During installation, remember to tick the checkbox
-echo   "Add python.exe to PATH" near the bottom of the installer.
-echo.
-echo   Opening the download page for you...
-echo.
-start "" "https://www.python.org/downloads/"
 pause
 exit /b 1

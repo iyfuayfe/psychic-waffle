@@ -1,29 +1,51 @@
-# 个人账号配置与运行状态（含 DPAPI 密文，绝不入库）
+# ---------------------------------------------------------------
+# 个人数据：绝对不要提交，也绝对不要打进发布包
+# ---------------------------------------------------------------
 config.json
+config.json.bak
 state.json
-
-# 运行日志
+heartbeat.json
 logs/
-*.log
+!logs/.gitkeep
+portal_dump_*.html
+diagnostics/
+backup/
+userdata/
+stop.flag
+portable.txt
 
-# 自测生成的配置（DPAPI 密文与本机绑定，换个机器就解不开）
-test/config.test.json
-test/config.bad.json
-test/_tmp_aes/
-
-# Python
+# ---------------------------------------------------------------
+# Python 缓存 / 构建产物
+# ---------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+build/
+dist/
+*.spec.bak
 .venv/
 venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
 
-# 打包产物
-*.zip
+# ---------------------------------------------------------------
+# 开发调试产物（不属于正式发布内容）
+# ---------------------------------------------------------------
+*.log
+gui_error.log
+crash-*.log
+portal_assets/
+.tmp/
+.dsh-vision-router/
+_scratch/
+*.bak
+*.orig
 
-# 编辑器 / 系统
-.vscode/
-.idea/
-Thumbs.db
-desktop.ini
-.DS_Store
+# ---------------------------------------------------------------
+# 说明：JSON 文件不要整体忽略，因为下面这些是需要纳入版本控制的：
+#   config.example.json   脱敏后的示例配置
+#   tests/*.json          固定测试数据
+# ---------------------------------------------------------------

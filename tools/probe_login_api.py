@@ -7,7 +7,7 @@
 只发假账号，不会影响真实在线会话。
 
 用法：
-    python tools/probe_login_api.py --host 111.17.200.130 --port 801
+    python tools/probe_login_api.py --host 192.0.2.10 --port 801
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ def show(name: str, resp) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--host", default="111.17.200.130")
+    ap.add_argument("--host", default="192.0.2.10")
     ap.add_argument("--port", type=int, default=801)
     ap.add_argument("--account", default=FAKE_ACCOUNT)
     ap.add_argument("--password", default=FAKE_PASSWORD)

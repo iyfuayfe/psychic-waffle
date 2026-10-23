@@ -1,0 +1,10 @@
+# CampusNet 运行依赖
+#
+# 本程序**只用 Python 标准库**（urllib / ssl / ctypes / subprocess / tkinter …），
+# 因此运行期没有任何第三方依赖 —— 这也是能顺利打成单目录 EXE 的原因之一。
+#
+# 这里保留一个空依赖文件，是为了让 `pip install -r requirements.txt` 这种
+# 常见部署习惯不会报错；构建 EXE 需要的依赖在 requirements-dev.txt 里。
+#
+# 平台要求：Windows 10 / 11（用到 DPAPI、netsh、资源管理器）
+# Python 要求：3.9+（开发与构建验证使用 3.13）

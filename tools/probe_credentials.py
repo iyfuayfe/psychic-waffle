@@ -40,7 +40,7 @@ def qs(fields: dict) -> str:
 def main() -> int:
     cfg = Config.load()
     log = setup_logging(cfg, console=True)
-    host = cfg.drcom.host or "111.17.200.130"
+    host = cfg.drcom.host or "192.0.2.10"
     port = cfg.drcom.port or 801
     api = f"http://{host}:{port}/eportal/portal/"
     ip = cfg.drcom.wlan_user_ip or local_ip_for(host) or ""
@@ -57,7 +57,7 @@ def main() -> int:
     print(f"账号：{cfg.username}  密码长度：{len(password)}  本机IP：{ip}（十进制 {ip_to_int(ip)}）")
     print("=" * 70)
 
-    mac = "000000000000"  # 门户不校验 MAC 时留全零即可
+    mac = "0A1B2C3D4E5F"
     accounts = {
         "带@cmcc后缀": cfg.username + "@cmcc",
         "不带后缀": cfg.username,
@@ -86,7 +86,7 @@ def main() -> int:
             result = parsed.get("result")
             msg = str(parsed.get("msg", "") or "")
             auth_url = str(parsed.get("self_auth_url", "") or "")
-            verdict = "✅ 凭据正确" if result in (1, "1", "ok") else ("❌ " + (msg or f"result={result}"))
+            verdict = "[OK] 凭据正确" if result in (1, "1", "ok") else ("❌ " + (msg or f"result={result}"))
             print(f"[self_type={st}] {label:12s} -> result={result!r} msg={msg!r} url={'有' if auth_url else '无'}  {verdict}")
 
     return 0

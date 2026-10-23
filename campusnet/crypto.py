@@ -148,7 +148,8 @@ def unprotect(ciphertext_b64: str) -> str:
 def acquire_single_instance(name: str = "Local\\CampusNetAutoLogin") -> object | None:
     """用命名互斥体保证只有一个后台实例。已有实例时返回 None。
 
-    返回的句柄必须一直持有，否则互斥体会被释放。
+    返回的句柄必须一直持有，否则互斥体会被释放。用完（或只是"探测一下"）
+    请调用 :func:`release_single_instance` 显式关闭，避免句柄泄漏。
     """
     if _kernel32 is None:
         return object()  # 非 Windows：不做限制
@@ -161,3 +162,17 @@ def acquire_single_instance(name: str = "Local\\CampusNetAutoLogin") -> object |
         _kernel32.CloseHandle(ctypes.c_void_p(handle))
         return None
     return handle
+
+
+def release_single_instance(handle: object | None) -> None:
+    """关闭 :func:`acquire_single_instance` 拿到的句柄（幂等、绝不抛异常）。
+
+    "判断有没有实例在跑"这种只读探测必须用完就关：否则探测方自己一直持有
+    互斥体，真正的后台进程反而抢不到，还会把句柄泄漏掉。
+    """
+    if not handle or _kernel32 is None:
+        return
+    try:
+        _kernel32.CloseHandle(ctypes.c_void_p(int(handle)))
+    except Exception:  # noqa: BLE001
+        pass

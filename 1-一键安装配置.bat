@@ -1,39 +1,44 @@
 @echo off
 rem ---------------------------------------------------------------
-rem  Campus Net Auto Login - Setup
-rem  NOTE: intentionally ASCII-only. cmd.exe parses .bat files using
-rem  the console code page, so non-ASCII text here can corrupt the
-rem  batch file on some systems. All Chinese UI text lives in the
-rem  Python GUI, which is Unicode-safe.
+rem  CampusNet - setup wizard (first-time configuration)
+rem  ASCII-only on purpose, see 0-*.bat for why.
+rem
+rem  Prefers CampusNetSetup.exe; falls back to source mode.
 rem ---------------------------------------------------------------
-title Campus Net Auto Login - Setup
+title CampusNet Setup
 cd /d "%~dp0"
 
+if exist "CampusNetSetup.exe" goto runexe
+if exist "dist\CampusNet\CampusNetSetup.exe" goto rundist
+goto runsource
+
+:runexe
+start "" "CampusNetSetup.exe"
+exit /b 0
+
+:rundist
+start "" "dist\CampusNet\CampusNetSetup.exe"
+exit /b 0
+
+:runsource
 set "PYW="
 where pythonw.exe >nul 2>nul
 if not errorlevel 1 set "PYW=pythonw.exe"
-if defined PYW goto run
+if defined PYW goto runsrcpy
 where pyw.exe >nul 2>nul
 if not errorlevel 1 set "PYW=pyw.exe"
-if defined PYW goto run
-goto nopython
+if defined PYW goto runsrcpy
+goto noexe
 
-:run
-start "" "%PYW%" "tools\gui_setup.pyw"
+:runsrcpy
+start "" "%PYW%" "entry.py" --setup
 exit /b 0
 
-:nopython
+:noexe
 echo.
-echo   [ERROR] Python was not found on this computer.
+echo   [ERROR] CampusNetSetup.exe was not found, and Python is not installed.
+echo   Please extract the whole release folder and try again.
+echo   Developers: install Python 3.9+ and run  python entry.py --setup
 echo.
-echo   Please install Python 3.8 or newer first:
-echo       https://www.python.org/downloads/
-echo.
-echo   During installation, remember to tick the checkbox
-echo   "Add python.exe to PATH" near the bottom of the installer.
-echo.
-echo   Opening the download page for you...
-echo.
-start "" "https://www.python.org/downloads/"
 pause
 exit /b 1

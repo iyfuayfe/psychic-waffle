@@ -35,9 +35,9 @@ def classify(msg: str, result, ret_code) -> str:
     if result in (1, "1", "ok") or str(ret_code) == "2":
         return "★ 成功语义"
     if any(k in msg for k in drcom_mod.CREDENTIAL_HINTS):
-        return "✅ 格式正确（服务端已走到凭据校验）"
+        return "[OK] 格式正确（服务端已走到凭据校验）"
     if any(k in msg for k in drcom_mod.PARAM_ERROR_HINTS):
-        return "⚠ 参数/会话问题（要区分是格式错还是无待认证会话）"
+        return "[注意] 参数/会话问题（要区分是格式错还是无待认证会话）"
     return "? 未分类"
 
 
@@ -45,7 +45,7 @@ def main() -> int:
     cfg = Config.load()
     log = setup_logging(cfg, console=True)
 
-    host = cfg.drcom.host or "111.17.200.130"
+    host = cfg.drcom.host or "192.0.2.10"
     portal_url = cfg.portal_url or f"http://{host}/a79.htm"
 
     client = HttpClient(

@@ -91,7 +91,7 @@ def main() -> int:
 
     from campusnet.checker import check as ck
     fin = ck(client2, cfg)
-    print(f"\n最终联网：{'✅ 成功' if fin.online else '❌ 仍不通'}（{fin.reason}）")
+    print(f"\n最终联网：{'[OK] 成功' if fin.online else '❌ 仍不通'}（{fin.reason}）")
     return 0
 
 

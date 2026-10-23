@@ -23,7 +23,7 @@ from campusnet.drcom import ip_to_int, local_ip_for, parse_jsonp  # noqa: E402
 from campusnet.http import HttpClient  # noqa: E402
 from campusnet.logs import setup_logging  # noqa: E402
 
-HOST = "111.17.200.130"
+HOST = "192.0.2.10"
 PORT = 801
 
 
@@ -41,12 +41,12 @@ def main() -> int:
         return 2
 
     ip = cfg.drcom.wlan_user_ip or local_ip_for(HOST) or ""
-    mac = "000000000000"
-    acip = "117.132.17.39"
+    mac = "0A1B2C3D4E5F"
+    acip = "192.0.2.20"
 
     accounts = [
-        ("无前缀@cmcc", cfg.username + "@cmcc"),
-        (",0,前缀@cmcc", ",0," + cfg.username + "@cmcc"),
+        ("无前缀@cmcc", "13800000000@cmcc"),
+        (",0,前缀@cmcc", ",0,13800000000@cmcc"),
     ]
 
     client = HttpClient(timeout=10, insecure_tls=True, use_system_proxy=False)

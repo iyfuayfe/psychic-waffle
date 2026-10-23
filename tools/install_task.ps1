@@ -1,110 +1,60 @@
-﻿# 注册计划任务：登录后自动在后台静默运行校园网自动登录
-# 用 pythonw.exe 启动 => 没有控制台窗口；程序自身不弹任何对话框。
+# 已废弃（V3.0）：请改用 CampusNet 图形界面或命令行。
 #
-# 用法（普通权限即可，不需要管理员）：
+# V2 用「计划任务 + 启动文件夹 VBS」双保险自启动，问题有三点：
+#   1. 注册登录触发型计划任务通常需要管理员权限，普通用户装不上；
+#   2. 两套机制互相不知道对方，只能靠互斥体兜底，出问题难解释；
+#   3. 那份 VBS 还把 python.exe 的绝对路径写死了，换台机器直接失效。
+#
+# V3.0 简化为**唯一**一种用户级机制：HKCU\...\Run 里一个值
+# （CampusNetDaemon = "...CampusNetService.exe" --daemon），
+# 不需要管理员权限，删起来也干净。
+#
+# 这个脚本保留下来只为兼容旧文档/旧习惯，实际作用是转调新的自启动实现。
+#
+# 用法（普通权限即可）：
 #   powershell -ExecutionPolicy Bypass -File tools\install_task.ps1
+#   powershell -ExecutionPolicy Bypass -File tools\install_task.ps1 -Disable
 #
 [CmdletBinding()]
 param(
-    [string]$TaskName = 'CampusNetAutoLogin',
-    [string]$PythonwPath = '',
-    [int]$RepeatMinutes = 15
+    [switch]$Disable
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
+$root = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $root
 
-$projectRoot = Split-Path -Parent $PSScriptRoot
-$scriptPath = Join-Path $projectRoot 'campus_login.py'
+Write-Host ''
+Write-Host '[提示] 这个脚本已改为转调 V3.0 的自启动实现（HKCU Run，用户级，无需管理员）。' -ForegroundColor Yellow
+Write-Host '       旧版计划任务会被自动清理；更推荐直接用界面「设置 → 开机自动启动后台守护」。'
+Write-Host ''
 
-if (-not (Test-Path -LiteralPath $scriptPath)) {
-    throw "找不到 campus_login.py：$scriptPath"
+$cli = $null
+foreach ($candidate in @(
+        (Join-Path $root 'CampusNetCLI.exe'),
+        (Join-Path $root 'dist\CampusNet\CampusNetCLI.exe'))) {
+    if (Test-Path -LiteralPath $candidate) { $cli = $candidate; break }
 }
 
-# ---------- 定位 pythonw.exe ----------
-if (-not $PythonwPath) {
-    $cmd = Get-Command pythonw.exe -ErrorAction SilentlyContinue
-    if ($cmd) { $PythonwPath = $cmd.Source }
-}
-if (-not $PythonwPath) {
-    $py = Get-Command python.exe -ErrorAction SilentlyContinue
-    if ($py) {
-        $candidate = Join-Path (Split-Path -Parent $py.Source) 'pythonw.exe'
-        if (Test-Path -LiteralPath $candidate) { $PythonwPath = $candidate }
+if ($cli) {
+    if ($Disable) {
+        & $cli autostart off
+    } else {
+        & $cli autostart on
     }
-}
-if (-not $PythonwPath -or -not (Test-Path -LiteralPath $PythonwPath)) {
-    throw '找不到 pythonw.exe。请确认已安装 Python 且 pythonw.exe 在 PATH 中。'
+    exit $LASTEXITCODE
 }
 
-$me = "$env:USERDOMAIN\$env:USERNAME"
-
-Write-Host "程序 : $PythonwPath"
-Write-Host "脚本 : $scriptPath"
-Write-Host "用户 : $me"
-
-# ---------- 方案 A：ScheduledTasks 模块（功能最全，推荐）----------
-function Install-ViaModule {
-    $action = New-ScheduledTaskAction -Execute $PythonwPath `
-        -Argument ('"' + $scriptPath + '"') `
-        -WorkingDirectory $projectRoot
-
-    $triggers = @()
-    $triggers += New-ScheduledTaskTrigger -AtLogOn -User $me
-    $triggers += New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
-        -RepetitionInterval (New-TimeSpan -Minutes $RepeatMinutes) `
-        -RepetitionDuration (New-TimeSpan -Days 3650)
-
-    $settings = New-ScheduledTaskSettingsSet `
-        -AllowStartIfOnBatteries `
-        -DontStopIfGoingOnBatteries `
-        -StartWhenAvailable `
-        -ExecutionTimeLimit ([TimeSpan]::Zero) `
-        -MultipleInstances IgnoreNew `
-        -RestartCount 3 `
-        -RestartInterval (New-TimeSpan -Minutes 1)
-
-    $principal = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
-
-    Register-ScheduledTask -TaskName $TaskName `
-        -Action $action `
-        -Trigger $triggers `
-        -Settings $settings `
-        -Principal $principal `
-        -Description '校园网自动登录（后台静默运行，无窗口无弹窗）' `
-        -Force | Out-Null
+$python = Get-Command python.exe -ErrorAction SilentlyContinue
+if (-not $python) {
+    Write-Host '[错误] 既没有 CampusNetCLI.exe，也没有安装 Python。' -ForegroundColor Red
+    Write-Host '       请使用发布包里的 CampusNet.exe，或先安装 Python 3.9+。'
+    exit 1
 }
 
-# ---------- 方案 B：schtasks.exe 兜底（模块不可用时）----------
-# 需要两个任务：一个登录时触发，一个每 N 分钟自愈一次。
-function Install-ViaSchtasks {
-    $tr = '\"' + $PythonwPath + '\" \"' + $scriptPath + '\"'
-
-    & schtasks.exe /Create /TN $TaskName /TR $tr /SC ONLOGON /RL LIMITED /F | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "schtasks 注册登录触发失败（退出码 $LASTEXITCODE）" }
-
-    & schtasks.exe /Create /TN "$TaskName-KeepAlive" /TR $tr /SC MINUTE /MO $RepeatMinutes /RL LIMITED /F | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "schtasks 注册自愈触发失败（退出码 $LASTEXITCODE）" }
+if ($Disable) {
+    & $python.Source (Join-Path $root 'entry.py') --role cli autostart off
+} else {
+    & $python.Source (Join-Path $root 'entry.py') --role cli autostart on
 }
-
-# ---------- 执行 ----------
-$mode = ''
-try {
-    Install-ViaModule
-    $mode = 'ScheduledTasks 模块'
-} catch {
-    Write-Warning "计划任务模块注册失败：$($_.Exception.Message)"
-    Write-Host '改用 schtasks.exe 兜底方案 ...'
-    Install-ViaSchtasks
-    $mode = 'schtasks.exe'
-}
-
-Write-Host ''
-Write-Host "已注册计划任务：$TaskName（方式：$mode）" -ForegroundColor Green
-Write-Host "  触发：用户登录时 + 每 $RepeatMinutes 分钟自愈检查"
-Write-Host '  （进程已在跑时，新实例会因单实例互斥自行退出，不会重复登录）'
-Write-Host ''
-Write-Host "查看状态 : schtasks /Query /TN $TaskName /V /FO LIST"
-Write-Host "立即启动 : schtasks /Run /TN $TaskName"
-Write-Host "停止     : schtasks /End /TN $TaskName"
-Write-Host "查看日志 : Get-Content '$projectRoot\logs\campus_login.log' -Tail 30 -Encoding UTF8"
-Write-Host '卸载     : powershell -ExecutionPolicy Bypass -File tools\uninstall_task.ps1'
+exit $LASTEXITCODE
