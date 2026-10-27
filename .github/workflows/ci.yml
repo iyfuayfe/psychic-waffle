@@ -1,0 +1,38 @@
+name: ci
+
+# 为什么第一天只做"单元测试 + 语法/未定义名检查"：
+# 打包要跑 PyInstaller（几分钟）并产出 20MB 的包，一上来就塞进 CI 既拖慢反馈，
+# 又容易因为环境抖动把 CI 变红；先把"代码还能不能跑"这条底线守住，
+# 等绿灯稳定了再加 build/pack 作业。
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: 单元测试
+        run: python tools/run_tests.py
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装 ruff
+        run: python -m pip install ruff
+      # 只查语法错误/未定义名这类真错误，避免历史告警（行宽、导入顺序）把 CI 变红；
+      # 完整的 select 集放在 pyproject.toml 里，供本地 `ruff check` 使用。
+      - name: ruff 语法与未定义名检查
+        run: ruff check --select E9,F63,F7,F82 campusnet tests tools
