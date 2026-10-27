@@ -1,0 +1,12 @@
+{
+  "config_version": 3,
+  "portal_url": "http://127.0.0.1:8899/",
+  "username": "testuser",
+  "password_enc": "EXAMPLEONLYNOTACIPHERTEXT",
+  "check_urls": [
+    {
+      "url": "http://127.0.0.1:8899/connecttest.txt",
+      "expect_text": "Microsoft Connect Test"
+    }
+  ],
+  "interval_online": 5,

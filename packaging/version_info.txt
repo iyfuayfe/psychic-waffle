@@ -1,0 +1,29 @@
+# UTF-8
+# 由 tools/build_exe.py 自动生成，请不要手工修改
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(3, 1, 2, 0),
+    prodvers=(3, 1, 2, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '080404b0',
+        [StringStruct('CompanyName', 'CampusNet'),
+         StringStruct('FileDescription', '校园网自动登录（CampusNet 3.1.2）'),
+         StringStruct('FileVersion', '3.1.2.0'),
+         StringStruct('InternalName', 'CampusNet'),
+         StringStruct('LegalCopyright', 'MIT License'),
+         StringStruct('OriginalFilename', 'CampusNet.exe'),
+         StringStruct('ProductName', '校园网自动登录'),
+         StringStruct('ProductVersion', '3.1.2.0')])
+    ]),
+    VarFileInfo([VarStruct('Translation', [0x0804, 1200])])
+  ]
+)

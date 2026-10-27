@@ -1,0 +1,17 @@
+# 这里**只**放 ruff 配置。
+#
+# 为什么不写 [build-system]/[project]：本项目的打包流程是
+# ``tools/build_exe.py`` + ``packaging/CampusNet.spec``（PyInstaller），
+# 发行物是 zip/exe，而不是 wheel；写上项目元数据会让人以为 `pip install .`
+# 是受支持的安装方式，也会让工具误判这是个可安装包。所以刻意保持"只有工具配置"。
+[tool.ruff]
+# 历史代码行宽较宽（中文提示 + 参数列表），先放宽到 110，别让换行噪声淹没真问题。
+line-length = 110
+target-version = "py311"
+extend-exclude = ["dist", "build"]
+
+[tool.ruff.lint]
+# 本地跑保留较宽的选择集（能暴露导入顺序、可升级写法、常见陷阱）；
+# CI 只挑 E9/F63/F7/F82 这些"真错误"，见 .github/workflows/ci.yml。
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]

@@ -1,0 +1,16 @@
+# 构建与开发依赖（运行程序本身不需要任何第三方包）
+#
+#   python -m pip install -r requirements-dev.txt
+#   build_exe.bat
+#
+# 版本号是本次发布（V3.0）实际构建验证过的版本，见 docs/BUILDING.md。
+# 许可证：
+#   PyInstaller            GPL-2.0-or-later WITH Bootloader-exception（打包器本身）
+#   pyinstaller-hooks-contrib  Apache-2.0
+#   altgraph               MIT
+#   pefile                 MIT
+#   pywin32-ctypes         BSD-3-Clause
+#   这些工具只在**构建阶段**使用，不会成为分发给用户的运行时依赖；
+#   PyInstaller 的 bootloader 例外条款允许分发它生成的 EXE。
+PyInstaller==6.22.3
+pyinstaller-hooks-contrib==2026.8

@@ -1,0 +1,24 @@
+{
+  "portal_url": "http://127.0.0.1:8899/",
+  "username": "testuser",
+  "password_enc": "AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAAEXAMPLEONLYnotarealciphertextAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "check_urls": [
+    {
+      "url": "http://127.0.0.1:8899/connecttest.txt",
+      "expect_text": "Microsoft Connect Test"
+    }
+  ],
+  "interval_online": 5,
+  "interval_offline": 2,
+  "interval_max": 10,
+  "request_timeout": 5,
+  "insecure_tls": true,
+  "use_system_proxy": false,
+  "log_level": "DEBUG",
+  "drcom": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 8899,
+    "account_suffix": "@cmcc"
+  }
+}

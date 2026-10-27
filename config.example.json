@@ -1,0 +1,75 @@
+{
+  "config_version": 3,
+
+  "wifi_ssid": "你的校园网 Wi-Fi 名称（要和 Windows 里显示的一字不差）",
+  "wifi_connect_mode": "open",
+  "auto_enabled": true,
+  "portal_auth_enabled": true,
+  "autofill_click": true,
+  "service_option": "",
+  "user_selector": "",
+  "password_selector": "",
+  "submit_selector": "",
+  "browser_fallback": false,
+
+  "portal_url": "",
+  "username": "你的学号或上网账号",
+  "password_enc": "由配置向导自动生成（DPAPI 密文），不要手写",
+
+  "check_urls": [
+    { "url": "http://www.msftconnecttest.com/connecttest.txt", "expect_text": "Microsoft Connect Test" },
+    { "url": "http://connect.rom.miui.com/generate_204", "expect_status": 204 },
+    { "url": "http://captive.apple.com/hotspot-detect.html", "expect_text": "Success" }
+  ],
+
+  "interval_online": 60,
+  "interval_offline": 8,
+  "interval_max": 120,
+  "request_timeout": 8,
+
+  "insecure_tls": false,
+  "tls_insecure_hosts": [],
+  "use_system_proxy": false,
+  "include_submit_button": false,
+
+  "trusted_auth_hosts": [],
+
+  "portal_dump_enabled": false,
+  "portal_dump_max_files": 5,
+
+  "already_online_keywords": ["注销", "退出登录", "已登录", "logout", "you are online", "上网时长"],
+  "bad_credential_keywords": ["密码错误", "用户名或密码", "账号或密码", "认证失败", "invalid password", "user not found"],
+
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "log_level": "INFO",
+  "log_max_bytes": 1000000,
+  "log_backups": 3,
+
+  "notify_webhook": "",
+  "notify_on_success": false,
+
+  "drcom": {
+    "enabled": true,
+    "host": "",
+    "port": 801,
+    "account_suffix": "",
+    "wlan_user_ip": "",
+    "wlan_ac_ip": "",
+    "wlan_ac_name": "",
+    "wlan_user_mac": "000000000000",
+    "js_version": "",
+    "login_method": -1,
+    "terminal_type": 1
+  },
+
+  "custom": {
+    "enabled": false,
+    "url": "",
+    "method": "POST",
+    "username_field": "",
+    "password_field": "",
+    "extra_fields": {},
+    "encoding": "",
+    "content_type": "form"
+  }
+}
