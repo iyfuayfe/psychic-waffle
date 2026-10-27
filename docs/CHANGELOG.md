@@ -620,3 +620,27 @@ SEM_NOOPENFILEERRORBOX)`，让加载失败**静默返回**而不是弹框给用�
    `get_logger()`，缺陷存在时会永久阻塞（实测回退修复后进程卡到超时而不报错）。
    现在每个用例都在带超时的 daemon 线程里调用，并在 `setUp` 里换一把新锁；
    实测：修复状态下 3 项通过（0.002s），回退状态下 3 项失败（7.0s）且进程正常退出。
+
+### 六、首次 CI 运行暴露的三个问题（已修）
+
+仓库加上 `.github/workflows/ci.yml` 后的第一次运行是**全红**（3 个 test 作业 + lint 作业）。
+三个原因都不是产品逻辑，但其中一个是真实缺陷：
+
+1. **`campusnet/browser.py` 在 Python 3.11 及更早根本无法解析**（真实缺陷）：
+   CDP 握手失败时的消息写成
+   `f"CDP 握手被拒绝：{header.split(b'\r\n', 1)[0].decode('latin-1')}"`，
+   而 f-string 的**表达式部分不允许出现反斜杠**——这是 Python 3.12 才放宽的语法，
+   在 3.9/3.10/3.11 上是 `SyntaxError`（等于整个模块 import 不了）。项目声称支持
+   Python 3.9+，因此这是必须修的兼容性问题。现在先取出状态行再拼接消息。
+   （复现：`ruff check --select E9 --target-version py39` 会直接报
+   `invalid-syntax: Cannot use an escape sequence (backslash) in f-strings on Python 3.11`。）
+2. **`tools/run_tests.py` 在 Windows runner 上第一条 print 就崩**：runner 的标准输出
+   编码是 cp1252，脚本里的中文触发 `UnicodeEncodeError`，于是三个 Python 版本的
+   "单元测试"作业都在 2 秒内失败、测试根本没跑起来。现在启动时把 stdout/stderr
+   重设为 UTF-8（`errors="replace"`），并在工作流里设 `PYTHONIOENCODING=utf-8` 兜底。
+3. **`tools/test_system_integration.py` 三处引用了未定义的 `registry_reason`**
+   （ruff `F821`）：该名字在重构后已改名为 `select_mode()` 返回的 `mode_note`，
+   于是"注册表不可写"的降级分支一旦走到就会抛 `NameError`。三处已改为 `mode_note`。
+
+回归方式（本地，与 CI 同一版本 ruff）：`ruff check --select E9,F63,F7,F82 campusnet tests tools`
+输出 `All checks passed!`；`--target-version py39` 亦无语法错误；单元测试 312 项通过。

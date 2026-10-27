@@ -112,8 +112,11 @@ class _WebSocket:
             header += chunk
             if len(header) > 65536:
                 raise BrowserError("CDP 握手失败：响应过长")
-        if b" 101 " not in header.split(b"\r\n", 1)[0]:
-            raise BrowserError(f"CDP 握手被拒绝：{header.split(b'\r\n', 1)[0].decode('latin-1')}")
+        status_line = header.split(b"\r\n", 1)[0]
+        if b" 101 " not in status_line:
+            # 注意：f-string 的表达式部分不能出现反斜杠——Python 3.11 及更早会报
+            # SyntaxError（3.12 起才允许）。项目声称支持 3.9+，所以先解出首行再拼接。
+            raise BrowserError(f"CDP 握手被拒绝：{status_line.decode('latin-1')}")
         self._buffer = b""
 
     # -- 发送 --

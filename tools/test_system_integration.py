@@ -280,7 +280,7 @@ def main(argv: list | None = None) -> int:
                          "登记的路径指向 CampusNetService.exe",
                          "登记命令里没有明文密码", "其它启动项一个都没动",
                          "autostart status 反映已开启", "autostart off 删除注册表值"):
-                skip(name, registry_reason)
+                skip(name, mode_note)
         else:
             code, out = cli(["autostart", "on"], data_dir=data_dir)
             check("autostart on 返回成功", code == 0, out[:300])
@@ -342,7 +342,7 @@ def main(argv: list | None = None) -> int:
         # ---------- 4. 取消自启动 ----------
         print("\n4) 取消自启动")
         if not registry_ok:
-            skip("取消自启动与最终还原", registry_reason)
+            skip("取消自启动与最终还原", mode_note)
         else:
             code, out = cli(["autostart", "off"], data_dir=data_dir)
             check("autostart off 返回成功", code == 0, out[:300])
@@ -378,7 +378,7 @@ def main(argv: list | None = None) -> int:
         if registry_ok:
             check("卸载后自启动已关闭", VALUE_NAME not in read_run_values())
         else:
-            skip("卸载后自启动已关闭", registry_reason)
+            skip("卸载后自启动已关闭", mode_note)
 
         print("\n7) 卸载（--remove-data 会删除数据）")
         code, out = cli(["uninstall", "--remove-data"], data_dir=data_dir)

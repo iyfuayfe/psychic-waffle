@@ -23,6 +23,16 @@ import sys
 import time
 from pathlib import Path
 
+# Windows 控制台与 CI runner 的默认输出编码可能是 cp1252 / cp936：本脚本（以及它打印的
+# 子进程输出）含大量中文，编码不对就会以 UnicodeEncodeError 崩在第一条 print 上——
+# GitHub Actions 上实测如此（三个 Python 版本的作业全部因此失败，测试根本没跑起来）。
+# 这里统一把标准输出/错误重设为 UTF-8 并允许替换字符，保证"输出中文永远不会崩"。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")   # Python 3.7+
+    except Exception:  # noqa: BLE001
+        pass
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
