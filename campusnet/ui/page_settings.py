@@ -157,6 +157,11 @@ class SettingsPage(tk.Frame):
         )
         self.entry_portal = _entry(self.auth_box, self.var_portal)
         self.entry_portal.pack(fill="x", pady=(4, 4))
+        self.var_transport_hint = tk.StringVar()
+        tk.Label(self.auth_box, textvariable=self.var_transport_hint, font=f(8.5),
+                 bg=CARD, fg=MUTED, wraplength=380, justify="left").pack(anchor="w", pady=(0, 4))
+        self.var_portal.trace_add("write", lambda *_: self._update_transport_hint())
+        self._update_transport_hint()
         tk.Label(self.auth_box, text="填写认证网页地址；留空时每次自动探测。",
                  font=f(8.5), bg=CARD, fg=FAINT).pack(anchor="w", pady=(0, 12))
 
@@ -524,6 +529,16 @@ class SettingsPage(tk.Frame):
 
     # ------------------------------------------------ 交互
 
+    def _update_transport_hint(self) -> None:
+        portal = self.var_portal.get().strip().lower()
+        if portal.startswith("http://"):
+            text = "认证页使用 HTTP，账号密码可能以明文传输；本机加密不保护网络传输。"
+        elif portal.startswith("https://"):
+            text = "认证页使用 HTTPS；后台请求和表单提交会阻止 HTTP 降级。"
+        else:
+            text = "传输方式取决于探测到的认证页；HTTP 门户可能明文传输账号密码。"
+        self.var_transport_hint.set(text)
+
     def _apply_auth_state(self) -> None:
         on = bool(self.var_portal_auth.get())
         try:
@@ -787,3 +802,4 @@ def _enable_recursive(widget: tk.Misc, enabled: bool) -> None:
         pass
     for child in widget.winfo_children():
         _enable_recursive(child, enabled)
+

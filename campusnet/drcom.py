@@ -16,7 +16,7 @@ v2 改为**以门户自己的 JS 为准**（已抓取 `a41.js` / `a40.js` / `a59
        aes_en: CryptoJS.AES.encrypt(str, CryptoJS.enc.Utf8.parse('5c1d5ad4dea0e8dd'),
                                     {mode: ECB, padding: Pkcs7}).toString()
 
-   —— 所以裸发明文参数（尤其 `DDDDD`/`upass`）必然被判非法。这就是 v1 失败的根因。
+   部分部署也兼容明文 user_account；是否可用取决于服务器。
 
 2. 请求是 **GET + JSONP**，参数顺序 callback 在最前，之后是 params / jsVersion，
    末尾追加 `lang`（a41.js:789-815、826-843）：
@@ -40,8 +40,9 @@ v2 改为**以门户自己的 JS 为准**（已抓取 `a41.js` / `a40.js` / `a59
     明文 user_account    -> 当前页面已超时（服务端也兼容）
     明文 DDDDD/upass     -> 认证出现异常！（格式非法 —— v1 就是这么失败的）
 
-所以 v2 以 **AES 浏览器同款** 为首选策略，明文 `user_account` 作兜底，
-`DDDDD` 只在 `login_method == 0` 的老式部署上才用。
+当前默认顺序是明文 user_account、带 AC 参数的明文、AES 浏览器同款兜底；
+上次成功的策略会优先复用。AES 为协议兼容格式，不代替 TLS。
+接口协议默认跟随认证页，HTTPS 流程不自动降级为 HTTP。
 """
 
 from __future__ import annotations
@@ -58,6 +59,7 @@ from . import aes
 from .config import Config
 from .http import HttpClient
 from .portal import PortalPage
+from .security import UrlPolicy, origin_of
 
 JSONP_RE = re.compile(r"^[^(]*\((.*)\)\s*;?\s*$", re.S)
 
@@ -133,10 +135,16 @@ def parse_jsonp(text: str) -> dict:
     return {"_raw": str(obj)[:300]}
 
 
+class RefusedTargetError(ValueError):
+    """The Dr.COM endpoint is not an approved credential destination."""
+
+
 @dataclass
 class DrcomContext:
     host: str = ""
     port: int = 801
+    scheme: str = "http"
+    portal_url: str = ""
     account: str = ""
     wlan_user_ip: str = ""
     wlan_ac_ip: str = ""
@@ -155,9 +163,18 @@ class DrcomContext:
     rcn: str = ""  # loadConfig 返回的会话 nonce，登录必须原样带上
 
     @property
+    def origin(self) -> str:
+        host = f"[{self.host}]" if ":" in self.host else self.host
+        return f"{self.scheme}://{host}:{self.port}"
+
+    @property
+    def page_origin(self) -> str:
+        return origin_of(self.portal_url) or self.origin
+
+    @property
     def api(self) -> str:
-        """http://<host>:<port>/eportal/portal/"""
-        return f"http://{self.host}:{self.port}/eportal/portal/"
+        """Endpoint using the configured/inherited transport."""
+        return self.origin + "/eportal/portal/"
 
     @property
     def api_login(self) -> str:
@@ -165,7 +182,7 @@ class DrcomContext:
 
     @property
     def api_ac(self) -> str:
-        return f"http://{self.host}:{self.port}/eportal/"
+        return self.api.removesuffix("portal/")
 
     def final_account(self) -> str:
         """账号 + 运营商后缀（不加 ,0, 前缀）。"""
@@ -206,11 +223,19 @@ class DrcomAdapter:
 
     # ------------------------------------------------------------ 上下文
 
+    def _check_target(self, ctx: DrcomContext) -> None:
+        decision = UrlPolicy(self.cfg.trusted_auth_hosts).allow(
+            ctx.api, ctx.portal_url or self.cfg.portal_url
+        )
+        if not decision.allowed:
+            raise RefusedTargetError(decision.reason)
+
     def _load_portal_config(self, ctx: DrcomContext) -> None:
         """调 page/loadConfig 拿 login_method / account_prefix / account_suffix。
 
         这一步是浏览器加载门户页后的第一个请求，未加密（此时 page.login_method 还是默认 0）。
         """
+        self._check_target(ctx)
         fields = {
             "callback": "dr1003",
             "program_index": "",
@@ -273,6 +298,8 @@ class DrcomAdapter:
         ctx = DrcomContext(
             host=host,
             port=int(port),
+            scheme=dc.scheme or parsed.scheme or "http",
+            portal_url=portal_url,
             account="",
             wlan_user_ip=dc.wlan_user_ip or "",
             wlan_ac_ip=dc.wlan_ac_ip or "",
@@ -284,6 +311,7 @@ class DrcomAdapter:
             login_method=forced if forced >= 0 else 1,
             force_login_method=forced >= 0,
         )
+        self._check_target(ctx)  # Before config/status probes or credentials leave the process.
         self._forced_login_method = ctx.login_method
 
         # 1) 先看门户页内嵌 JS —— 这是服务端**为本机现场生成**的，最权威。
@@ -409,6 +437,7 @@ class DrcomAdapter:
             外层 params = AES(JSON)                     <- util._jsonp 干的
             JSON 里每个值  = AES(字段原文)               <- _util.aes_en 干的
         """
+        self._check_target(ctx)
         inner = {
             "account": aes.encrypt_b64(ctx.final_account()),
             "wlan_user_ip": aes.encrypt_b64(ctx.wlan_user_ip or ""),
@@ -425,7 +454,7 @@ class DrcomAdapter:
         })
         try:
             resp = self.client.get(url, follow_redirects=False,
-                                   headers={"Referer": f"http://{ctx.host}/"})
+                                   headers={"Referer": ctx.page_origin + "/"})
         except Exception as exc:  # noqa: BLE001
             self.log.debug("queryPageSet 请求失败：%s", exc)
             return False, f"请求异常 {exc}"
@@ -438,14 +467,16 @@ class DrcomAdapter:
         return ok, msg or f"HTTP {resp.status}"
 
     def chkstatus(self, ctx: DrcomContext) -> tuple[bool, str]:
-        """调内核状态接口 `/drcom/chkstatus`（端口 80）。
+        """调内核状态接口 `/drcom/chkstatus`（所选协议的默认端口）。
 
         这是浏览器加载门户后必走的一步（a41.js checkStatus），也是多个可用实现
         （延安大学 YAU / 深大 net-login）登录前的第一步。它做两件事：
           1. 在服务端把本机的"页面会话"激活（少了它登录接口会回「当前页面已超时」）
           2. 返回服务端登记的权威本机信息：v4ip/v46ip/ss5 = IP，ss4 = MAC，result = 是否在线
         """
-        url = f"http://{ctx.host}/drcom/chkstatus?" + _qs({
+        self._check_target(ctx)
+        host = f"[{ctx.host}]" if ":" in ctx.host else ctx.host
+        url = f"{ctx.scheme}://{host}/drcom/chkstatus?" + _qs({
             "callback": "_ck",
             "jsVersion": "4.X",
             "v": str(random.randint(500, 10500)),
@@ -453,7 +484,7 @@ class DrcomAdapter:
         })
         try:
             resp = self.client.get(url, follow_redirects=False,
-                                   headers={"Referer": f"http://{ctx.host}/"})
+                                   headers={"Referer": ctx.page_origin + "/"})
         except Exception as exc:  # noqa: BLE001
             self.log.debug("chkstatus 请求失败：%s", exc)
             return False, f"请求异常 {exc}"
@@ -497,7 +528,7 @@ class DrcomAdapter:
 
     def strategies(self, ctx: DrcomContext, password: str) -> list[dict]:
         out: list[dict] = []
-        headers = {"Referer": f"http://{ctx.host}/", "Origin": f"http://{ctx.host}"}
+        headers = {"Referer": ctx.page_origin + "/", "Origin": ctx.page_origin}
 
         # ---- 策略 1（首选）：明文，与三个可用实现完全一致（AC 参数留空）----
         out.append({
@@ -546,6 +577,9 @@ class DrcomAdapter:
         返回 (是否成功, 说明, 策略名, 是否账号密码问题)。
         最后一个布尔为 True 时调用方应停止重试（账号密码不对，重试只会增加被锁风险）。
         """
+        self._check_target(ctx)
+        if ctx.scheme == "http":
+            self.log.warning("认证接口使用 HTTP，账号密码可能以明文传输；本机密码加密不保护网络传输。")
         plans = self.strategies(ctx, password)
         if preferred:
             plans.sort(key=lambda p: 0 if p["name"] == preferred else 1)
@@ -620,6 +654,7 @@ class DrcomAdapter:
         登录接口一律回「当前页面已超时」），必须先注销掉旧会话才能重新认证。
         参数按 a40.js:232 `logout.logout_portal` 复刻，URL 为 portal_api + 'logout'。
         """
+        self._check_target(ctx)
         data = {
             "login_method": ctx.login_method,
             "user_account": "drcom",
@@ -660,7 +695,7 @@ class DrcomAdapter:
         for url, name in candidates:
             try:
                 resp = self.client.get(url, follow_redirects=False,
-                                       headers={"Referer": f"http://{ctx.host}/"})
+                                       headers={"Referer": ctx.page_origin + "/"})
             except Exception as exc:  # noqa: BLE001
                 last = f"{name}: 请求异常 {exc}"
                 continue
@@ -673,3 +708,4 @@ class DrcomAdapter:
                 return True, last
             self.log.debug("注销尝试 %s 未成功：%s", name, last)
         return False, last
+

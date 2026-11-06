@@ -16,7 +16,7 @@
                     └─ network-down ──► cooldown ────────────────┘
 
 重试策略：失败后 ``interval_offline`` 起步，每次 ×1.6，封顶 ``interval_max``；
-一次成功立刻回到 ``interval_online``。账号密码错误时不再高频重试（避免账号被锁），
+一次成功立刻回到 ``interval_online``。账号密码错误时暂停认证，更新凭据或重启后台后再试（避免账号被锁），
 直接退到最大间隔，并只在第一次推一条通知。
 
 休眠/待机恢复：用 ``time.monotonic()`` 与 ``time.time()`` 的差值检测"睡了一大觉"
@@ -332,6 +332,7 @@ class Daemon:
         self._last_fail_log = 0.0
         self._had_failure = False
         self._notified_bad = False
+        self._blocked_credentials = None
         self._notified_need_user = False
         self._last_wifi_try = 0.0
         self._last_browser_try = 0.0
@@ -458,6 +459,15 @@ class Daemon:
             self._heartbeat(state=STATE_COOLDOWN)
             return password
 
+        credentials = (cfg.username, cfg.password_enc, cfg.service_option, cfg.drcom.account_suffix)
+        if self._blocked_credentials == credentials:
+            self._interval = float(cfg.interval_max)
+            self._heartbeat(state=STATE_NEED_USER, detail="账号或密码不正确，已暂停认证；请更新凭据或重启后台重试")
+            return password
+        if self._blocked_credentials is not None:
+            self._blocked_credentials = None
+            self._notified_bad = False
+
         self._heartbeat(state=STATE_AUTH)
         result: AuthOutcome = auth.login(portal, cfg.username, password, verify)
         self.snapshot.last_auth_status = result.status
@@ -482,12 +492,13 @@ class Daemon:
         self._note_failure(state, result)
 
         if result.status == STATUS_BAD_CREDENTIALS:
-            # 账号密码不对：重试没有意义，别把账号撞锁
+            # Keep checking connectivity, but never resubmit rejected credentials.
+            self._blocked_credentials = credentials
             self._interval = float(cfg.interval_max)
             if not self._notified_bad:
                 self._notified_bad = True
                 notify(cfg, f"自动登录失败：账号或密码有问题。\n{result.reason}\n请在 CampusNet 里重新设置。", log)
-            self._heartbeat(state=STATE_NEED_USER, detail="账号或密码不正确，已降低重试频率")
+            self._heartbeat(state=STATE_NEED_USER, detail="账号或密码不正确，已暂停认证；请更新凭据或重启后台重试")
             return password
 
         if result.status in (STATUS_CAPTCHA_REQUIRED, STATUS_MANUAL_REQUIRED) or result.needs_user:
@@ -829,3 +840,4 @@ def cli() -> None:  # pragma: no cover
 
 if __name__ == "__main__":  # pragma: no cover
     cli()
+

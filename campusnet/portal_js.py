@@ -129,6 +129,7 @@ _SCRIPT = r"""
   // 由页面脚本接管的表单不拦，否则会误伤大量学校门户
   const hostAllowed = (url) => {
     const host = String(url.hostname || '').toLowerCase().replace(/\.$/, '');
+    if (location.protocol === 'https:' && url.protocol === 'http:') return false;
     return (url.protocol !== 'http:' && url.protocol !== 'https:') || allowedHosts.includes(host);
   };
   let target = null;
@@ -348,10 +349,11 @@ STATE_TEXT = {
     "not-submitted": "尚未提交。",
     "invalid-selector": "自定义 CSS 选择器无效，请在设置里检查。",
     "missing-submit": "已填好账号密码，但没有找到登录按钮。",
-    "wrong-form-action": "登录表单的提交地址不在允许的主机列表中，已停止填写。",
+    "wrong-form-action": "登录表单指向未允许的主机，或从 HTTPS 降级为 HTTP，已停止填写。",
     "invalid-form-action": "登录表单的提交地址无法解析，已停止填写。",
 }
 
 
 def describe(state: str) -> str:
     return STATE_TEXT.get(state, state or "未知状态")
+

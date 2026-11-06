@@ -2,6 +2,15 @@
 
 本文件记录面向用户的变更。版本号唯一来源是 `campusnet/version.py`。
 
+## 未发布：认证边界与重试修复
+
+- HTTP 跳转重新选择 Cookie；跨来源移除认证头和来源头，禁止 HTTPS 降级为 HTTP。
+- Dr.COM 配置、会话、登录与注销均检查目标主机，未允许的主机返回 refused-target；新增 drcom.scheme，默认继承门户协议，HTTP 兼容保留。
+- 浏览器表单目标守卫拒绝 HTTPS 到 HTTP 的降级，设置页说明传输方式与本地加密的区别。
+- 明确的密码错误暂停后台提交，更新凭据或运营商后恢复；旧配置中泛化的“认证失败”/“invalid”关键词自动移除。
+- 通用表单去重，每次最多两份不同请求；补充跳转会话、Dr.COM、传输协议、重复提交和暂停恢复回归测试。
+- 修正 Dr.COM 旧注释：实际默认顺序为明文优先、AES 兜底；真实校园网和打包 EXE 验证范围没有扩大。
+
 ## 3.0.0
 
 ### 新增：正式 EXE 发布（核心目标）
@@ -644,3 +653,4 @@ SEM_NOOPENFILEERRORBOX)`，让加载失败**静默返回**而不是弹框给用�
 
 回归方式（本地，与 CI 同一版本 ruff）：`ruff check --select E9,F63,F7,F82 campusnet tests tools`
 输出 `All checks passed!`；`--target-version py39` 亦无语法错误；单元测试 312 项通过。
+
