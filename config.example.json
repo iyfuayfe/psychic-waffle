@@ -38,7 +38,7 @@
   "portal_dump_max_files": 5,
 
   "already_online_keywords": ["注销", "退出登录", "已登录", "logout", "you are online", "上网时长"],
-  "bad_credential_keywords": ["密码错误", "用户名或密码", "账号或密码", "认证失败", "invalid password", "user not found"],
+  "bad_credential_keywords": ["密码错误", "用户名或密码", "账号或密码", "invalid password", "user not found"],
 
   "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
   "log_level": "INFO",
@@ -51,6 +51,7 @@
   "drcom": {
     "enabled": true,
     "host": "",
+    "scheme": "",
     "port": 801,
     "account_suffix": "",
     "wlan_user_ip": "",
@@ -73,3 +74,4 @@
     "content_type": "form"
   }
 }
+

@@ -81,6 +81,7 @@ class DrcomConfig:
     enabled: bool = True
     host: str = ""  # 留空则从 portal_url 推导，例如 192.0.2.10
     port: int = 801  # 页面里 authloginport=801
+    scheme: str = ""  # 空 = 跟随认证页；可显式指定 http / https
     account_suffix: str = ""  # 如 @cmcc / @dx / @lt，留空则不改动账号
     wlan_user_ip: str = ""  # 留空则自动获取（跳转URL -> 页面JS -> 本机出口IP）
     wlan_ac_ip: str = ""
@@ -156,7 +157,7 @@ class Config:
     )
     # 页面出现这些词就认为账号密码有问题（不必反复重试）
     bad_credential_keywords: list = field(
-        default_factory=lambda: ["密码错误", "用户名或密码", "账号或密码", "认证失败", "invalid password", "user not found"]
+        default_factory=lambda: ["密码错误", "用户名或密码", "账号或密码", "invalid password", "user not found"]
     )
 
     user_agent: str = DEFAULT_USER_AGENT
@@ -279,6 +280,10 @@ class Config:
             setattr(self, name, coerced)
             note(name, f"应为 true/false，已按 {coerced} 处理")
 
+        self.drcom.scheme = str(self.drcom.scheme or "").strip().lower()
+        if self.drcom.scheme not in ("", "http", "https"):
+            note("drcom.scheme", "仅支持 http/https，已恢复跟随认证页")
+            self.drcom.scheme = ""
         self.drcom.enabled = _to_bool(self.drcom.enabled, default=True)
         self.custom.enabled = _to_bool(self.custom.enabled, default=False)
 
@@ -340,6 +345,10 @@ class Config:
         # ---- 列表 ----
         self.tls_insecure_hosts = [h for h in _as_str_list(self.tls_insecure_hosts)]
         self.trusted_auth_hosts = [h for h in _as_str_list(self.trusted_auth_hosts)]
+        keywords = _as_str_list(self.bad_credential_keywords)
+        self.bad_credential_keywords = [k for k in keywords if k.strip().lower() not in ("认证失败", "invalid")]
+        if self.bad_credential_keywords != keywords:
+            note("bad_credential_keywords", "已移除泛化的认证失败关键词，避免把会话超时误判为密码错误")
         if self.insecure_tls:
             note(
                 "insecure_tls",
@@ -678,3 +687,4 @@ def save_heartbeat(data: dict) -> None:
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     except Exception:  # noqa: BLE001
         pass
+

@@ -40,7 +40,7 @@ from .adapters import (
     adapter_plan,
 )
 from .config import Config, load_state, save_state
-from .drcom import DrcomAdapter, looks_like_drcom
+from .drcom import DrcomAdapter, RefusedTargetError, looks_like_drcom
 from .http import HttpClient
 from .portal import PortalPage, build_payload, summarize
 from .security import UrlPolicy, mask_account, redact_portal_html, redact_url
@@ -157,7 +157,14 @@ class PortalAuthenticator:
         # ---- 2. Dr.COM ----
         if self.cfg.drcom.enabled and looks_like_drcom(resp_desc or portal_url, page):
             self.log.info("识别为 Dr.COM / 哆点 ePortal 门户，使用专用策略")
-            ctx = self.drcom.build_context(portal_url, page)
+            try:
+                ctx = self.drcom.build_context(portal_url, page)
+            except RefusedTargetError as exc:
+                return AuthOutcome(
+                    ok=False, status=STATUS_REFUSED_TARGET, reason=str(exc),
+                    attempts=attempts, needs_user=True, retryable=False,
+                    adapter="drcom", portal_url=portal_url,
+                )
             ctx.account = username
             ctx.suffix = ctx.suffix or self.cfg.drcom.account_suffix
             self.log.info(
@@ -291,13 +298,19 @@ class PortalAuthenticator:
                 include_submit_button=True,
             ), form.method, False),
         ]
-        if form.method == "get":
-            variants.append(("form:GET查询串", variants[0][1], "get", True))
+        # At most two distinct form submissions per login; do not retry an
+        # identical payload when the form has no named submit button.
 
         last_reason = tail_reason
         last_status: int | None = None      # 记录整数状态码，不用字符串包含去猜
         network_error = False
+        submitted = set()
         for label, payload, method, force_get in variants:
+            actual_method = "GET" if force_get or method.lower() == "get" else "POST"
+            key = (submit_url, actual_method, tuple(sorted(payload.items())))
+            if key in submitted:
+                continue
+            submitted.add(key)
             attempts += 1
             try:
                 if force_get or method == "get":
@@ -430,3 +443,4 @@ class PortalAuthenticator:
 
 def describe(page: PortalPage) -> dict:
     return summarize(page)
+

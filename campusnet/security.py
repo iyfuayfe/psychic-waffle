@@ -356,6 +356,8 @@ class UrlPolicy:
         if not is_http_url(target_url):
             return Decision(False, "目标地址不是合法的 http/https 地址", "")
         host = host_key(target_url)
+        if not is_https(target_url) and any(source and is_https(source) for source in sources):
+            return Decision(False, "认证地址从 HTTPS 降级为 HTTP，已停止提交；请配置 HTTPS 接口。", host)
         for source in sources:
             if source and same_host(source, target_url):
                 return Decision(True, "", host)
@@ -389,3 +391,4 @@ class RedactionStats:
 
     fields: int = 0
     notes: list = field(default_factory=list)
+

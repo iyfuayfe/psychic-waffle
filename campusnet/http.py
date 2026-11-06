@@ -309,6 +309,9 @@ class HttpClient:
                 and max_redirects > 0
             ):
                 new_url = urllib.parse.urljoin(resp.url, resp.location)
+                # Never turn a verified HTTPS flow into plaintext HTTP.
+                if urllib.parse.urlsplit(req.full_url).scheme == "https" and urllib.parse.urlsplit(new_url).scheme == "http":
+                    return resp
                 new_method = req.get_method()
                 new_data = req.data
                 if resp.status in (301, 302, 303):
@@ -316,11 +319,16 @@ class HttpClient:
                 elif new_data and not _same_origin_strict(new_url, req.full_url):
                     # 307/308 会重发 body：只要端点变了就绝不把凭据再送一次
                     return resp
+                # CookieJar must select cookies for the new URL, including any
+                # Set-Cookie just received. Copying Cookie bypasses domain/path rules.
+                excluded = {"host", "content-length", "cookie"}
+                if not _same_origin_strict(new_url, req.full_url):
+                    excluded.update({"authorization", "proxy-authorization", "origin", "referer"})
                 return self.request(
                     new_url,
                     method=new_method,
                     data=new_data,
-                    headers={k: v for k, v in req.header_items() if k.lower() not in ("host", "content-length")},
+                    headers={k: v for k, v in req.header_items() if k.lower() not in excluded},
                     follow_redirects=True,
                     max_redirects=max_redirects - 1,
                     timeout=timeout,
@@ -384,3 +392,4 @@ def classify_network_error(exc: BaseException) -> str:
     if "unreachable" in text or "network is down" in text or "no route" in text:
         return "unreachable"
     return "unreachable"
+

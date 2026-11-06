@@ -43,6 +43,7 @@ UNIT_SUITES = [
     "tests.test_paths",
     "tests.test_checker",
     "tests.test_http",
+    "tests.test_auth_hardening",
     "tests.test_authenticator",
     "tests.test_daemon",
     "tests.test_autostart",
@@ -240,3 +241,4 @@ def main(argv: list | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
